@@ -1,0 +1,51 @@
+/ index.js (reservationProcessing lambda)
+import { v4 as uuidv4 } from 'uuid';
+import {PublishCommand } from "@aws-sdk/client-sns";
+import {snsClient } from "./snsClient.js";
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { ddbClient } from "./ddbClient.js";
+
+export const handler = async (event) => {
+    try {        
+        if (event.httpMethod != 'POST') {
+            throw new Error(`Only Http Method POST. allowed : "${event.httpMethod}"`);
+        }
+        const roomOrderRequest = JSON.parse(event.body);
+        if (roomOrderRequest == null || roomOrderRequest.type == null) {
+            throw new Error(`order type should exist in roomOrderRequest: "${roomOrderRequest}"`);
+        }
+
+        const orderId = uuidv4();
+        roomOrderRequest.id = orderId;
+
+        let params = {
+            Message: JSON.stringify(roomOrderRequest),
+            TopicArn: "arn:aws:sns:us-east-1:000000000:ReservationTopic",
+        };
+        const data = await snsClient.send(new PublishCommand(params));
+
+        const dynamodbParams = {
+            TableName: "reservation",
+            Item: marshall(roomOrderRequest || {})
+          };      
+        const createResult = await ddbClient.send(new PutItemCommand(dynamodbParams));
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+            message: `Successfully finished order create operation: "${roomOrderRequest}"`,
+            body: data
+            })
+        };
+    } catch (e) {
+        console.error(e);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+            message: "Failed to perform operation.",
+            errorMsg: e.message,
+            errorStack: e.stack,
+            })
+        };        
+    }    
+};
