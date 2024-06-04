@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Id": "Policy1799962918573",
+  "Statement": [
+    {
+      "Sid": "Stmt1710002900000",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "sqs:SendMessage",
+      "Resource": "arn:aws:sqs:us-east-2:123456789012:inventory-queue",
+      "Condition": {
+        "ArnEquals": {
+          "aws:SourceArn": "arn:aws:sns:us-east-2:123456789012:ReservationTopic"
+        }
+      }
+    }
+  ]
+}
